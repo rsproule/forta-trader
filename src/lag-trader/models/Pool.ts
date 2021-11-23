@@ -8,7 +8,6 @@ import Decimal from 'decimal.js'
 import { Exchange } from 'ccxt'
 import { Provider } from '@ethersproject/abstract-provider'
 
-
 export class PoolPair {
   private poolA: Pool
   private poolB: Pool
@@ -57,6 +56,7 @@ export class PoolPair {
 }
 
 export class Pool {
+  private blockHeight: number
   private contract: Contract
   private fee: number | undefined
   private slot0: any
@@ -75,16 +75,18 @@ export class Pool {
     swapsDisabled: boolean,
     quoter: Contract,
     lockedLoops: number,
+    blockHeight: number,
   ) {
     this.contract = contract
     this.quoter = quoter
     this.lockedLoops = lockedLoops
     this.swapsDisabled = swapsDisabled
+    this.blockHeight = blockHeight
   }
 
   public async load(): Promise<Pool> {
     this.fee = await this.contract.fee()
-    this.slot0 = await this.contract.slot0()
+    this.slot0 = await this.contract.slot0({blockTag: this.blockHeight})
     this.token0 = new Token(
       new Contract(
         await this.contract.token0(),

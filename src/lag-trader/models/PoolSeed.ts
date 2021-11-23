@@ -15,11 +15,14 @@ export class PoolSeed {
         this.enabled = enabled
     }
 
-    public async getPool(): Promise<Pool> {
+    public async getPool(blockNumber: number | undefined): Promise<Pool> {
+        if (blockNumber == undefined) {
+            blockNumber = await this.provider.getBlockNumber();
+        }
         let contract: Contract = new Contract(this.address, POOL_ABI_IMPL, this.provider);
-        let pool: Pool = new Pool(contract, this.enabled, Pool.getQuoter(this.provider), -1);
+        let pool: Pool = new Pool(contract, this.enabled, Pool.getQuoter(this.provider), -1, blockNumber);
         pool.setFee(await pool.getContract().fee());
-        pool.setSlot(await pool.getContract().slot0());
+        pool.setSlot(await pool.getContract().slot0({blockTag: blockNumber}));
         let token0: Token = await new Token(new Contract(await pool.getContract().token0(), ERC20ABI, this.provider)).load();
         let token1: Token = await new Token(new Contract(await pool.getContract().token1(), ERC20ABI, this.provider)).load();
         pool.setTokens(token0, token1);

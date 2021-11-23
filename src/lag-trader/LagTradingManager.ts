@@ -16,22 +16,25 @@ export default class LagTradingManager {
     this.cexes = cexes
   }
 
-  public async run(blockHeight: BlockEvent) {
+  public async run(block: BlockEvent) {
     this.dexSeeds.forEach(async (dexSeed) => {
       this.cexes.forEach(async (cex) => {
         let pool: Pool;
         let markets: Dictionary<Market>;
         try {
-          pool = await dexSeed.getPool()
+          pool = await dexSeed.getPool(block.blockNumber)
           markets = await cex.loadMarkets(true)
         } catch (error) {
           console.log(error)
           return
         }
-        const market = CEXHelper.getRelevantCEXMarket(pool, markets)
-
+        const market: Market = CEXHelper.getRelevantCEXMarket(pool, markets)
+        
         const dexPrice = pool.getNormalizedPrice()
-        const cexPrice = market.info.price
+        const candles = await cex.fetchOHLCV(market.id, "1m", block.block.timestamp * 1000, 1)
+        const cexPrice = (candles[0][2] + candles[0][3]) / 2 // average of high and low
+        
+        // const cexPrice = market.info.price
 
         const delta = dexPrice - cexPrice
         const deltaBips = (delta / dexPrice) * 10000
@@ -49,7 +52,7 @@ export default class LagTradingManager {
         }
 
         console.log(
-          `${blockHeight}, ${dexPrice}, ${cexPrice}, ${deltaBips}, ${this.ethHoldings}, ${this.usdHoldings}`,
+          `${block.blockNumber}, ${block.block.timestamp}, ${dexPrice}, ${cexPrice}, ${deltaBips}, ${this.ethHoldings}, ${this.usdHoldings}`,
         )
       })
     })
